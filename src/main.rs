@@ -12,6 +12,54 @@ use std::sync::mpsc;
 use std::thread;
 use std::time::{Duration, Instant};
 
+use std::fs::File;
+use std::io::{BufRead, BufReader};
+
+impl Mesh {
+    pub fn from_obj_file(filename: &str) -> std::io::Result<Self> {
+        let file = File::open(filename)?;
+        let reader = BufReader::new(file);
+
+        let mut vertices = Vec::new();
+        let mut triangles = Vec::new();
+
+        for line in reader.lines() {
+            let line = line?;
+            let line = line.trim();
+
+            if line.starts_with("v ") {
+                // 頂点情報
+                let parts: Vec<&str> = line[2..].split_whitespace().collect();
+                if parts.len() == 3 {
+                    let x: f32 = parts[0].parse().unwrap_or(0.0);
+                    let y: f32 = parts[1].parse().unwrap_or(0.0);
+                    let z: f32 = parts[2].parse().unwrap_or(0.0);
+                    vertices.push(Vertex::new(Vec3::new(x, y, z)));
+                }
+            } else if line.starts_with("f ") {
+                // 面情報 (三角形のみ対応)
+                let parts: Vec<&str> = line[2..].split_whitespace().collect();
+                if parts.len() == 3 {
+                    let idx: Vec<usize> = parts
+                        .iter()
+                        .map(|p| p.split('/').next().unwrap().parse::<usize>().unwrap() - 1)
+                        .collect();
+                    triangles.push(Triangle {
+                        vertices: [idx[0], idx[1], idx[2]],
+                        color: Color::WHITE,
+                    });
+                }
+            }
+        }
+
+        Ok(Self {
+            vertices,
+            triangles,
+            transform: Transform::new(),
+        })
+    }
+}
+
 fn main() {
     println!("Terminal Tiny GL - Rust Edition");
     println!("Controls:");
@@ -30,93 +78,71 @@ fn main() {
     print!("\x1b[?1049h"); // 代替スクリーンバッファを使用
     print!("\x1b[?25l"); // カーソルを隠す
 
-    let width = 120 * 2;
-    let height = 60 * 2;
+    let width = 2880;
+    let height = 1800 * 2;
 
     let mut canvas = Canvas::new(width, height);
     let mut scene = Scene::new(width as f32, height as f32);
     let mut renderer = Renderer::new();
 
     // カメラの初期位置を設定
-    scene.camera.set_position(Vec3::new(3.0, 3.0, 5.0));
+    scene.camera.set_position(Vec3::new(0.0, -1.0, 5.0));
     scene.camera.look_at(Vec3::new(0.0, 0.0, 0.0));
 
     // サンプルメッシュを追加
-    let mut cube = Mesh::create_cube(2.0);
-    cube.transform.position = Vec3::new(0.0, 0.0, 0.0);
-    scene.add_mesh(cube);
+    // let mut cube = Mesh::create_cube(2.0);
+    // cube.transform.position = Vec3::new(-2.0, 0.0, 0.0);
+    // scene.add_mesh(cube);
 
-    let mut pyramid = Mesh::create_pyramid(1.5);
-    pyramid.transform.position = Vec3::new(3.0, 0.0, 0.0);
-    scene.add_mesh(pyramid);
+    // let mut cube1 = Mesh::create_cube(3.0);
+    // cube1.transform.position = Vec3::new(4.0, 0.0, 0.0);
+    // scene.add_mesh(cube1);
 
-    let mut plane = Mesh::create_plane(8.0);
-    plane.transform.position = Vec3::new(0.0, -2.0, 0.0);
-    scene.add_mesh(plane);
+    // let mut pyramid = Mesh::create_pyramid(1.5);
+    // pyramid.transform.position = Vec3::new(0., 0., 0.0);
+    // scene.add_mesh(pyramid);
+
+    let mut test = Mesh::from_obj_file("african_head.obj").unwrap();
+    test.transform.position = Vec3::new(0.0, 0.0, 0.0);
+    test.transform.rotation = Vec3::new(0.0, 0.0, 0.0);
+    scene.add_mesh(test);
 
     canvas.init();
-
-    // 非ブロッキング入力用のチャンネル
-    let (tx, rx) = mpsc::channel();
-    thread::spawn(move || {
-        loop {
-            let mut input = [0];
-            if io::stdin().read(&mut input).is_ok() {
-                if tx.send(input[0]).is_err() {
-                    break;
-                }
-            }
-        }
-    });
+    thread::sleep(Duration::from_secs(3)); // 約60FPS
 
     let mut last_time = Instant::now();
     let mut rotation_time = 0.0f32;
 
-    'main_loop: loop {
-        let current_time = Instant::now();
-        let delta_time = current_time.duration_since(last_time).as_secs_f32();
-        last_time = current_time;
+    // loop {
+    let current_time = Instant::now();
+    let delta_time = current_time.duration_since(last_time).as_secs_f32();
+    last_time = current_time;
 
-        rotation_time += delta_time;
+    rotation_time += delta_time;
 
-        // 入力処理
-        while let Ok(key) = rx.try_recv() {
-            match key {
-                27 => break 'main_loop, // ESC
-                b'w' | b'W' => scene.camera.move_forward(0.1),
-                b's' | b'S' => scene.camera.move_forward(-0.1),
-                b'a' | b'A' => scene.camera.move_right(-0.1),
-                b'd' | b'D' => scene.camera.move_right(0.1),
-                b'q' | b'Q' => scene.camera.move_up(0.1),
-                b'e' | b'E' => scene.camera.move_up(-0.1),
-                b'r' | b'R' => renderer.toggle_render_mode(),
-                b'f' | b'F' => renderer.toggle_fps_display(),
-                _ => {}
-            }
-        }
+    // オブジェクトのアニメーション
+    // if let Some(cube) = scene.meshes.get_mut(0) {
+    //     cube.transform.rotation.x = rotation_time * 0.5;
+    //     cube.transform.rotation.y = rotation_time * 0.3;
+    // }
 
-        // オブジェクトのアニメーション
-        if let Some(cube) = scene.meshes.get_mut(0) {
-            cube.transform.rotation.x = rotation_time * 0.5;
-            cube.transform.rotation.y = rotation_time * 0.3;
-        }
+    // if let Some(pyramid) = scene.meshes.get_mut(1) {
+    //     pyramid.transform.rotation.y = rotation_time * 0.8;
+    //     pyramid.transform.position.y = (rotation_time * 2.0).sin() * 0.5;
+    // }
 
-        if let Some(pyramid) = scene.meshes.get_mut(1) {
-            pyramid.transform.rotation.y = rotation_time * 0.8;
-            pyramid.transform.position.y = (rotation_time * 2.0).sin() * 0.5;
-        }
+    // if let Some(pyramid) = scene.meshes.get_mut(0) {
+    //     pyramid.transform.rotation.y = rotation_time * 0.8;
+    //     pyramid.transform.position.y = (rotation_time * 2.0).sin() * 0.5;
+    // }
 
-        // レンダリング
-        renderer.render(&mut canvas, &scene);
+    // レンダリング
+    renderer.render(&mut canvas, &scene);
 
-        // フレームレート制限
-        thread::sleep(Duration::from_millis(16)); // 約60FPS
-    }
+    // フレームレート制限
+    // thread::sleep(Duration::from_millis(33)); // 約60FPS
 
-    // 端末を元に戻す
-    print!("\x1b[?25h"); // カーソルを表示
-    print!("\x1b[?1049l"); // 通常スクリーンバッファに戻る
-    print!("\x1b[2J\x1b[H"); // 画面をクリア
+    // }
 
-    println!("Terminal Tiny GL terminated.");
+    thread::sleep(Duration::from_secs(3)); // 約60FPS
 }

@@ -142,10 +142,6 @@ impl Canvas {
                 );
             }
         }
-        self.changed_coords.retain(|coord| {
-            let idx = (coord.y as usize) * self.width + (coord.x as usize);
-            !(self.r[idx] == 0 && self.g[idx] == 0 && self.b[idx] == 0)
-        });
 
         print!("\x1b[0m");
         io::stdout().flush().unwrap();

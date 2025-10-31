@@ -78,8 +78,8 @@ fn main() {
     print!("\x1b[?1049h"); // 代替スクリーンバッファを使用
     print!("\x1b[?25l"); // カーソルを隠す
 
-    let width = 2880;
-    let height = 1800 * 2;
+    let width = 200;
+    let height = 100 * 2;
 
     let mut canvas = Canvas::new(width, height);
     let mut scene = Scene::new(width as f32, height as f32);
@@ -90,59 +90,54 @@ fn main() {
     scene.camera.look_at(Vec3::new(0.0, 0.0, 0.0));
 
     // サンプルメッシュを追加
-    // let mut cube = Mesh::create_cube(2.0);
-    // cube.transform.position = Vec3::new(-2.0, 0.0, 0.0);
-    // scene.add_mesh(cube);
+    let mut cube = Mesh::create_cube(1.0);
+    cube.transform.position = Vec3::new(0., 0.0, 0.0);
+    scene.add_mesh(cube);
 
-    // let mut cube1 = Mesh::create_cube(3.0);
-    // cube1.transform.position = Vec3::new(4.0, 0.0, 0.0);
-    // scene.add_mesh(cube1);
+    let mut pyramid = Mesh::create_pyramid(1.);
+    pyramid.transform.position = Vec3::new(1.5, 0., 0.0);
+    scene.add_mesh(pyramid);
 
-    // let mut pyramid = Mesh::create_pyramid(1.5);
-    // pyramid.transform.position = Vec3::new(0., 0., 0.0);
-    // scene.add_mesh(pyramid);
-
-    let mut test = Mesh::from_obj_file("african_head.obj").unwrap();
-    test.transform.position = Vec3::new(0.0, 0.0, 0.0);
-    test.transform.rotation = Vec3::new(0.0, 0.0, 0.0);
-    scene.add_mesh(test);
+    // let mut test = Mesh::from_obj_file("african_head.obj").unwrap();
+    // test.transform.position = Vec3::new(0.0, 0.0, 0.0);
+    // test.transform.rotation = Vec3::new(0.0, 0.0, 0.0);
+    // scene.add_mesh(test);
 
     canvas.init();
-    thread::sleep(Duration::from_secs(3)); // 約60FPS
+    // thread::sleep(Duration::from_secs(3)); // 約60FPS
 
     let mut last_time = Instant::now();
     let mut rotation_time = 0.0f32;
 
-    // loop {
-    let current_time = Instant::now();
-    let delta_time = current_time.duration_since(last_time).as_secs_f32();
-    last_time = current_time;
+    loop {
+        let current_time = Instant::now();
+        let delta_time = current_time.duration_since(last_time).as_secs_f32();
+        last_time = current_time;
 
-    rotation_time += delta_time;
+        rotation_time += delta_time;
 
-    // オブジェクトのアニメーション
-    // if let Some(cube) = scene.meshes.get_mut(0) {
-    //     cube.transform.rotation.x = rotation_time * 0.5;
-    //     cube.transform.rotation.y = rotation_time * 0.3;
-    // }
+        // オブジェクトのアニメーション
+        if let Some(cube) = scene.meshes.get_mut(0) {
+            cube.transform.rotation.x = rotation_time * 0.5;
+            cube.transform.rotation.y = rotation_time * 0.3;
+        }
 
-    // if let Some(pyramid) = scene.meshes.get_mut(1) {
-    //     pyramid.transform.rotation.y = rotation_time * 0.8;
-    //     pyramid.transform.position.y = (rotation_time * 2.0).sin() * 0.5;
-    // }
+        if let Some(pyramid) = scene.meshes.get_mut(1) {
+            pyramid.transform.rotation.y = rotation_time * 0.8;
+            pyramid.transform.position.y = (rotation_time * 2.0).sin() * 0.5;
+        }
 
-    // if let Some(pyramid) = scene.meshes.get_mut(0) {
-    //     pyramid.transform.rotation.y = rotation_time * 0.8;
-    //     pyramid.transform.position.y = (rotation_time * 2.0).sin() * 0.5;
-    // }
+        // if let Some(pyramid) = scene.meshes.get_mut(0) {
+        //     pyramid.transform.rotation.y = rotation_time * 0.8;
+        //     pyramid.transform.position.y = (rotation_time * 2.0).sin() * 0.5;
+        // }
 
-    // レンダリング
-    renderer.render(&mut canvas, &scene);
+        // レンダリング
+        renderer.render(&mut canvas, &scene);
 
-    // フレームレート制限
-    // thread::sleep(Duration::from_millis(33)); // 約60FPS
-
-    // }
+        // フレームレート制限
+        thread::sleep(Duration::from_millis(33)); // 約60FPS
+    }
 
     thread::sleep(Duration::from_secs(3)); // 約60FPS
 }
